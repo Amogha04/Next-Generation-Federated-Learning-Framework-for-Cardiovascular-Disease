@@ -9,15 +9,16 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 from opacus import PrivacyEngine
 from src.models.heart_model import HeartModel
+from src.utils.data_loader import load_heart_data, load_cancer_data
 
 # Load dataset
-data_path = os.path.join(os.path.dirname(__file__), "../../data/heart.csv")
-df = pd.read_csv(data_path)
+# Choose disease
+disease = "cancer"  # change to "heart" or "cancer"
 
-X = df.drop("target", axis=1)
-y = df["target"]
-
-X = pd.get_dummies(X)
+if disease == "heart":
+    X, y = load_heart_data()
+else:
+    X, y = load_cancer_data()
 
 # Choose client id manually
 client_id = 1

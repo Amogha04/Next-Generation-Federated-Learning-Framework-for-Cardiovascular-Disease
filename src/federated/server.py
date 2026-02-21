@@ -1,31 +1,46 @@
 import flwr as fl
 import torch
 import torch.nn as nn
-import pandas as pd
 import numpy as np
-import os
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, roc_auc_score
+
 from src.models.heart_model import HeartModel
+from src.utils.data_loader import load_heart_data, load_cancer_data
 
-# Load full dataset
-data_path = os.path.join(os.path.dirname(__file__), "../../data/heart.csv")
-df = pd.read_csv(data_path)
 
-X = df.drop("target", axis=1)
-y = df["target"]
+# =========================
+# Choose disease
+# =========================
 
-X = pd.get_dummies(X)
+disease = "cancer"  # change to "heart" or "cancer"
+
+if disease == "heart":
+    X, y = load_heart_data()
+else:
+    X, y = load_cancer_data()
+
+
+# =========================
+# Preprocessing
+# =========================
 
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
 X_tensor = torch.tensor(X_scaled, dtype=torch.float32)
-y_tensor = torch.tensor(y.values, dtype=torch.float32).view(-1,1)
+y_tensor = torch.tensor(np.array(y), dtype=torch.float32).view(-1, 1)
 
 input_dim = X_tensor.shape[1]
 
+
+# =========================
+# Global Evaluation Function
+# =========================
+
 def evaluate_global(server_round, parameters, config):
+
     model = HeartModel(input_dim)
 
     # Load parameters into model
@@ -45,6 +60,11 @@ def evaluate_global(server_round, parameters, config):
 
     return 0.0, {"accuracy": acc, "auc": auc}
 
+
+# =========================
+# Federated Strategy
+# =========================
+
 strategy = fl.server.strategy.FedAvg(
     fraction_fit=1.0,
     fraction_evaluate=1.0,
@@ -53,6 +73,11 @@ strategy = fl.server.strategy.FedAvg(
     min_available_clients=3,
     evaluate_fn=evaluate_global,
 )
+
+
+# =========================
+# Start Server
+# =========================
 
 fl.server.start_server(
     server_address="127.0.0.1:9090",
