@@ -1,0 +1,9 @@
+{
+  "algorithm": "fedadam",
+  "dataset": "heart",
+  "training_rounds": 10,
+  "client_dropout_prob": 0.0,
+  "final_accuracy": 0.8995121951219512,
+  "final_auc": 0.950124583768297,
+  "last_round": 10
+}

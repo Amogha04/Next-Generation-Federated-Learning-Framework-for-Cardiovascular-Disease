@@ -1,0 +1,9 @@
+{
+  "algorithm": "fedavg",
+  "dataset": "cancer",
+  "training_rounds": 10,
+  "client_dropout_prob": 0.0,
+  "final_accuracy": 0.9560632688927944,
+  "final_auc": 0.990077162940648,
+  "last_round": 10
+}

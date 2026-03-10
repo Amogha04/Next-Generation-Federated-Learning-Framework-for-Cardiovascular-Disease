@@ -1,3 +1,5 @@
+import os
+
 import flwr as fl
 import torch
 import torch.nn as nn
@@ -36,11 +38,28 @@ input_dim = X_tensor.shape[1]
 
 
 # =========================
+# FL Algorithm Config
+# =========================
+
+# Select one: "fedavg", "fedprox", "fedadam"
+FL_ALGORITHM = os.getenv("FL_ALGORITHM", "fedavg").strip().lower()
+
+# FedProx config
+FEDPROX_MU = float(os.getenv("FEDPROX_MU", "0.01"))
+
+# FedAdam config
+FEDADAM_ETA = float(os.getenv("FEDADAM_ETA", "0.1"))
+FEDADAM_ETA_L = float(os.getenv("FEDADAM_ETA_L", "0.01"))
+FEDADAM_BETA_1 = float(os.getenv("FEDADAM_BETA_1", "0.9"))
+FEDADAM_BETA_2 = float(os.getenv("FEDADAM_BETA_2", "0.99"))
+FEDADAM_TAU = float(os.getenv("FEDADAM_TAU", "1e-9"))
+
+
+# =========================
 # Global Evaluation Function
 # =========================
 
 def evaluate_global(server_round, parameters, config):
-
     model = HeartModel(input_dim)
 
     # Load parameters into model
@@ -61,18 +80,52 @@ def evaluate_global(server_round, parameters, config):
     return 0.0, {"accuracy": acc, "auc": auc}
 
 
+def create_strategy(algorithm: str):
+    common_kwargs = dict(
+        fraction_fit=1.0,
+        fraction_evaluate=1.0,
+        min_fit_clients=3,
+        min_evaluate_clients=3,
+        min_available_clients=3,
+        evaluate_fn=evaluate_global,
+    )
+
+    if algorithm == "fedavg":
+        print("[SERVER] Using algorithm: FedAvg")
+        return fl.server.strategy.FedAvg(**common_kwargs)
+
+    if algorithm == "fedprox":
+        print(f"[SERVER] Using algorithm: FedProx (mu={FEDPROX_MU})")
+        return fl.server.strategy.FedProx(
+            proximal_mu=FEDPROX_MU,
+            **common_kwargs,
+        )
+
+    if algorithm == "fedadam":
+        print(
+            "[SERVER] Using algorithm: FedAdam "
+            f"(eta={FEDADAM_ETA}, eta_l={FEDADAM_ETA_L}, "
+            f"beta_1={FEDADAM_BETA_1}, beta_2={FEDADAM_BETA_2}, tau={FEDADAM_TAU})"
+        )
+        return fl.server.strategy.FedAdam(
+            eta=FEDADAM_ETA,
+            eta_l=FEDADAM_ETA_L,
+            beta_1=FEDADAM_BETA_1,
+            beta_2=FEDADAM_BETA_2,
+            tau=FEDADAM_TAU,
+            **common_kwargs,
+        )
+
+    raise ValueError(
+        f"Unsupported FL_ALGORITHM='{algorithm}'. Use fedavg, fedprox, or fedadam."
+    )
+
+
 # =========================
 # Federated Strategy
 # =========================
 
-strategy = fl.server.strategy.FedAvg(
-    fraction_fit=1.0,
-    fraction_evaluate=1.0,
-    min_fit_clients=3,
-    min_evaluate_clients=3,
-    min_available_clients=3,
-    evaluate_fn=evaluate_global,
-)
+strategy = create_strategy(FL_ALGORITHM)
 
 
 # =========================
