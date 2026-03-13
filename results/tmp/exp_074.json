@@ -1,0 +1,10 @@
+{
+  "algorithm": "fedprox",
+  "dataset": "heart",
+  "distribution": "iid",
+  "training_rounds": 10,
+  "client_dropout_prob": 0.3,
+  "final_accuracy": 0.8624390243902439,
+  "final_auc": 0.9399102387284073,
+  "last_round": 10
+}

@@ -1,9 +1,10 @@
 {
-  "algorithm": "fedadam",
-  "dataset": "heart",
+  "algorithm": "fedavg",
+  "dataset": "cancer",
+  "distribution": "dirichlet",
   "training_rounds": 10,
-  "client_dropout_prob": 0.0,
-  "final_accuracy": 0.855609756097561,
-  "final_auc": 0.9545593087315315,
+  "client_dropout_prob": 0.3,
+  "final_accuracy": 0.6449912126537786,
+  "final_auc": 0.9559352042703875,
   "last_round": 10
 }

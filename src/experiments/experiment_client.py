@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.models.heart_model import HeartModel
 from src.utils.data_loader import load_heart_data, load_cancer_data
-from src.utils.data_partitioner import non_iid_partition
+from src.utils.data_partitioner import non_iid_partition, dirichlet_partition
 
 
 CLIENT_ID = int(os.getenv("CLIENT_ID", "0"))
@@ -20,6 +20,7 @@ FL_DATASET = os.getenv("FL_DATASET", "heart").strip().lower()
 FL_DISTRIBUTION = os.getenv("FL_DISTRIBUTION", "iid").strip().lower()
 FL_DP_ENABLED = os.getenv("FL_DP_ENABLED", "true").strip().lower() in {"true", "1", "yes"}
 FL_RANDOM_SEED = int(os.getenv("FL_RANDOM_SEED", "42"))
+FL_DIRICHLET_ALPHA = float(os.getenv("FL_DIRICHLET_ALPHA", "1.0"))
 
 
 def load_dataset():
@@ -48,8 +49,16 @@ def build_local_data():
         partitions = non_iid_partition(X, y, num_clients=FL_NUM_CLIENTS)
     elif FL_DISTRIBUTION == "iid":
         partitions = iid_partition(X, y, num_clients=FL_NUM_CLIENTS, seed=FL_RANDOM_SEED)
+    elif FL_DISTRIBUTION == "dirichlet":
+        print(f"[CLIENT] Dirichlet partition alpha={FL_DIRICHLET_ALPHA}")
+        partitions = dirichlet_partition(
+            X,
+            y,
+            num_clients=FL_NUM_CLIENTS,
+            alpha=FL_DIRICHLET_ALPHA,
+        )
     else:
-        raise ValueError("FL_DISTRIBUTION must be iid or noniid")
+        raise ValueError("FL_DISTRIBUTION must be iid, noniid, or dirichlet")
 
     X_local, y_local = partitions[CLIENT_ID]
 
@@ -85,7 +94,6 @@ if FL_DP_ENABLED:
 
 
 class ExperimentClient(fl.client.NumPyClient):
-
     def get_parameters(self, config):
         return [val.detach().cpu().numpy() for val in model.parameters()]
 
@@ -94,7 +102,6 @@ class ExperimentClient(fl.client.NumPyClient):
             param.data = torch.tensor(new_param, dtype=torch.float32)
 
     def fit(self, parameters, config):
-
         self.set_parameters(parameters)
         model.train()
 
@@ -106,7 +113,6 @@ class ExperimentClient(fl.client.NumPyClient):
 
         for _ in range(5):
             for x_batch, y_batch in loader:
-
                 x_batch = x_batch.float()
                 y_batch = y_batch.float()
 
@@ -128,7 +134,6 @@ class ExperimentClient(fl.client.NumPyClient):
         return self.get_parameters(config), len(dataset), {}
 
     def evaluate(self, parameters, config):
-
         self.set_parameters(parameters)
         model.eval()
 
@@ -140,7 +145,6 @@ class ExperimentClient(fl.client.NumPyClient):
 
 
 if __name__ == "__main__":
-
     print(
         f"[CLIENT {CLIENT_ID}] dataset={FL_DATASET}, distribution={FL_DISTRIBUTION}, dp={FL_DP_ENABLED}"
     )

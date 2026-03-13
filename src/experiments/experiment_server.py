@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 import random
@@ -6,6 +7,7 @@ from typing import Dict, Any, List, Tuple
 import flwr as fl
 import numpy as np
 import torch
+import torch.nn as nn
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
@@ -15,6 +17,7 @@ from src.utils.data_loader import load_heart_data, load_cancer_data
 
 FL_ALGORITHM = os.getenv("FL_ALGORITHM", "fedavg").strip().lower()
 FL_DATASET = os.getenv("FL_DATASET", "heart").strip().lower()
+FL_DISTRIBUTION = os.getenv("FL_DISTRIBUTION", "iid").strip().lower()
 FL_NUM_ROUNDS = int(os.getenv("FL_NUM_ROUNDS", "10"))
 FL_NUM_CLIENTS = int(os.getenv("FL_NUM_CLIENTS", "3"))
 
@@ -29,6 +32,10 @@ FEDADAM_ETA_L = float(os.getenv("FEDADAM_ETA_L", "0.01"))
 FEDADAM_BETA_1 = float(os.getenv("FEDADAM_BETA_1", "0.9"))
 FEDADAM_BETA_2 = float(os.getenv("FEDADAM_BETA_2", "0.99"))
 FEDADAM_TAU = float(os.getenv("FEDADAM_TAU", "1e-9"))
+
+STRATEGY_NAME = FL_ALGORITHM
+DATASET_NAME = FL_DATASET
+DATA_DISTRIBUTION = FL_DISTRIBUTION
 
 
 def load_dataset():
@@ -50,11 +57,12 @@ X_tensor = torch.tensor(X_scaled, dtype=torch.float32)
 y_tensor = torch.tensor(np.array(y), dtype=torch.float32).view(-1, 1)
 
 input_dim = X_tensor.shape[1]
-
+criterion = nn.BCELoss()
 
 state: Dict[str, Any] = {
     "algorithm": FL_ALGORITHM,
     "dataset": FL_DATASET,
+    "distribution": FL_DISTRIBUTION,
     "training_rounds": FL_NUM_ROUNDS,
     "client_dropout_prob": FL_CLIENT_DROPOUT_PROB,
     "final_accuracy": None,
@@ -63,11 +71,30 @@ state: Dict[str, Any] = {
 }
 
 
+# ---------------- CONVERGENCE LOGGING ----------------
+
+# This helper appends one row per communication round.
+# A separate CSV is created per strategy/dataset/distribution combination so
+# convergence curves can be plotted directly for research comparisons.
+def log_convergence(round_num, loss, accuracy, strategy, dataset, distribution):
+    os.makedirs("results/convergence", exist_ok=True)
+
+    file_path = f"results/convergence/{strategy}_{dataset}_{distribution}.csv"
+    file_exists = os.path.isfile(file_path)
+
+    with open(file_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+        if not file_exists:
+            writer.writerow(["round", "loss", "accuracy"])
+
+        writer.writerow([round_num, loss, accuracy])
+
+
 # ---------------- EVALUATION ----------------
 
 def evaluate_global(server_round, parameters, config):
-
-    model = HeartModel(input_dim)
+    model = HeartModel(input_dim).float()
 
     for param, new_param in zip(model.parameters(), parameters):
         param.data = torch.tensor(new_param, dtype=torch.float32)
@@ -75,8 +102,9 @@ def evaluate_global(server_round, parameters, config):
     model.eval()
 
     with torch.no_grad():
-        outputs = model(X_tensor)
+        outputs = model(X_tensor.float())
         predictions = (outputs > 0.5).float()
+        loss = criterion(outputs, y_tensor.float())
 
     acc = accuracy_score(y_tensor.numpy(), predictions.numpy())
     auc = roc_auc_score(y_tensor.numpy(), outputs.numpy())
@@ -85,10 +113,27 @@ def evaluate_global(server_round, parameters, config):
     state["final_auc"] = float(auc)
     state["last_round"] = int(server_round)
 
+    metrics = {"accuracy": float(acc), "auc": float(auc)}
+
+    # Safe fallback in case accuracy is absent or malformed in future changes.
+    accuracy_for_log = metrics.get("accuracy", None)
+    if accuracy_for_log is None:
+        accuracy_for_log = 0.0
+
+    log_convergence(
+        server_round,
+        float(loss),
+        float(accuracy_for_log),
+        STRATEGY_NAME,
+        DATASET_NAME,
+        DATA_DISTRIBUTION,
+    )
+
+    print(f"[ROUND {server_round}] Global Loss: {float(loss):.4f}")
     print(f"[ROUND {server_round}] Global Accuracy: {acc:.4f}")
     print(f"[ROUND {server_round}] Global AUC: {auc:.4f}")
 
-    return 0.0, {"accuracy": float(acc), "auc": float(auc)}
+    return float(loss), metrics
 
 
 # ---------------- CLIENT FORMAT ----------------
@@ -109,14 +154,12 @@ def _format_client_ids(
 # ---------------- DROPOUT STRATEGIES ----------------
 
 class DropoutFedAvg(fl.server.strategy.FedAvg):
-
     def __init__(self, dropout_prob: float, seed: int, **kwargs):
         super().__init__(**kwargs)
         self.dropout_prob = dropout_prob
         self.rng = random.Random(seed)
 
     def configure_fit(self, server_round, parameters, client_manager):
-
         base_pairs = super().configure_fit(server_round, parameters, client_manager)
 
         if not base_pairs:
@@ -136,14 +179,12 @@ class DropoutFedAvg(fl.server.strategy.FedAvg):
 
 
 class DropoutFedProx(fl.server.strategy.FedProx):
-
     def __init__(self, dropout_prob: float, seed: int, **kwargs):
         super().__init__(**kwargs)
         self.dropout_prob = dropout_prob
         self.rng = random.Random(seed)
 
     def configure_fit(self, server_round, parameters, client_manager):
-
         base_pairs = super().configure_fit(server_round, parameters, client_manager)
 
         if not base_pairs:
@@ -163,14 +204,12 @@ class DropoutFedProx(fl.server.strategy.FedProx):
 
 
 class DropoutFedAdam(fl.server.strategy.FedAdam):
-
     def __init__(self, dropout_prob: float, seed: int, **kwargs):
         super().__init__(**kwargs)
         self.dropout_prob = dropout_prob
         self.rng = random.Random(seed)
 
     def configure_fit(self, server_round, parameters, client_manager):
-
         base_pairs = super().configure_fit(server_round, parameters, client_manager)
 
         if not base_pairs:
@@ -192,7 +231,6 @@ class DropoutFedAdam(fl.server.strategy.FedAdam):
 # ---------------- INITIAL PARAMETERS ----------------
 
 def get_initial_parameters():
-
     model = HeartModel(input_dim)
 
     return fl.common.ndarrays_to_parameters(
@@ -203,7 +241,6 @@ def get_initial_parameters():
 # ---------------- STRATEGY ----------------
 
 def create_strategy():
-
     common_kwargs = dict(
         fraction_fit=1.0,
         fraction_evaluate=0.0,
@@ -214,7 +251,6 @@ def create_strategy():
     )
 
     if FL_ALGORITHM == "fedavg":
-
         print(f"[SERVER] Using FedAvg | dropout={FL_CLIENT_DROPOUT_PROB}")
 
         return DropoutFedAvg(
@@ -224,7 +260,6 @@ def create_strategy():
         )
 
     if FL_ALGORITHM == "fedprox":
-
         print(f"[SERVER] Using FedProx | dropout={FL_CLIENT_DROPOUT_PROB}")
 
         return DropoutFedProx(
@@ -235,7 +270,6 @@ def create_strategy():
         )
 
     if FL_ALGORITHM == "fedadam":
-
         print(f"[SERVER] Using FedAdam | dropout={FL_CLIENT_DROPOUT_PROB}")
 
         return DropoutFedAdam(
@@ -256,7 +290,6 @@ def create_strategy():
 # ---------------- MAIN ----------------
 
 if __name__ == "__main__":
-
     strategy = create_strategy()
 
     fl.server.start_server(

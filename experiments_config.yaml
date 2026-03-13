@@ -1,0 +1,33 @@
+algorithms:
+  - fedavg
+  - fedprox
+  - fedadam
+
+datasets:
+  - heart
+  - cancer
+
+distributions:
+  - iid
+  - noniid
+  - dirichlet
+
+client_counts:
+  - 3
+  - 5
+  - 10
+
+dirichlet_alphas:
+  - 10
+  - 1
+
+dropout_levels:
+  - 0.0
+  - 0.3
+  - 0.5
+
+differential_privacy:
+  - true
+  - false
+
+training_rounds: 10
