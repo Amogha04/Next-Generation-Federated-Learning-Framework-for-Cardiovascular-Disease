@@ -1,0 +1,10 @@
+{
+  "algorithm": "fedprox",
+  "dataset": "cancer",
+  "distribution": "iid",
+  "training_rounds": 10,
+  "client_dropout_prob": 0.0,
+  "final_accuracy": 0.9367311072056239,
+  "final_auc": 0.9848184556841605,
+  "last_round": 10
+}

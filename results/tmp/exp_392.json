@@ -1,0 +1,10 @@
+{
+  "algorithm": "fedadam",
+  "dataset": "cancer",
+  "distribution": "noniid",
+  "training_rounds": 10,
+  "client_dropout_prob": 0.3,
+  "final_accuracy": 0.8471001757469244,
+  "final_auc": 0.9292320701865652,
+  "last_round": 10
+}

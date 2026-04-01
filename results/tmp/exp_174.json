@@ -1,10 +1,10 @@
 {
-  "algorithm": "fedadam",
+  "algorithm": "fedprox",
   "dataset": "heart",
-  "distribution": "dirichlet",
+  "distribution": "noniid",
   "training_rounds": 10,
-  "client_dropout_prob": 0.3,
-  "final_accuracy": 0.4868292682926829,
-  "final_auc": 0.9272689866424866,
+  "client_dropout_prob": 0.0,
+  "final_accuracy": 0.8595121951219512,
+  "final_auc": 0.9320389829087834,
   "last_round": 10
 }

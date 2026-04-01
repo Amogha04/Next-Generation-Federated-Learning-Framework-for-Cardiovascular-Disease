@@ -199,18 +199,33 @@ The dashboard provides:
 
 ## 9. Example Results
 
-### Convergence Plot
-![Convergence Plot](images/convergence.png)
+## Results
 
-### Accuracy vs Dirichlet Alpha
-![Accuracy vs Dirichlet Alpha](images/alpha_plot.png)
+### Convergence / Training Behavior
+![Experiment Logs](images/experiment_terminal_1.png)
+![Experiment Logs 2](images/experiment_terminal_2.png)
+![Experiment Logs 3](images/experiment_terminal_3.png)
 
-### Accuracy vs Clients
-![Accuracy vs Clients](images/clients_plot.png)
+---
 
-### Dashboard Screenshot
-![Dashboard Screenshot](images/dashboard.png)
+### Effect of Data Heterogeneity (Dirichlet Alpha)
+![Alpha Plot](images/alpha_plot.png)
 
+---
+
+### Scalability (Clients vs Accuracy)
+![Clients Plot](images/clients_plot.png)
+
+---
+
+### Dashboard Visualization
+![Dashboard View 1](images/dashboard_1.png)
+![Dashboard View 2](images/dashboard_2.png)
+
+---
+
+### Experiment Results Table
+![Results CSV](images/results_csv.png)
 ---
 
 ## 10. Future Work

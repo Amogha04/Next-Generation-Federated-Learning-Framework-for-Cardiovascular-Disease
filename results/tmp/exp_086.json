@@ -1,10 +1,10 @@
 {
-  "algorithm": "fedprox",
-  "dataset": "heart",
-  "distribution": "dirichlet",
+  "algorithm": "fedavg",
+  "dataset": "cancer",
+  "distribution": "iid",
   "training_rounds": 10,
-  "client_dropout_prob": 0.0,
-  "final_accuracy": 0.8575609756097561,
-  "final_auc": 0.9306369392777952,
+  "client_dropout_prob": 0.3,
+  "final_accuracy": 0.9630931458699473,
+  "final_auc": 0.9942788436129169,
   "last_round": 10
 }

@@ -1,10 +1,10 @@
 {
   "algorithm": "fedavg",
   "dataset": "heart",
-  "distribution": "dirichlet",
+  "distribution": "noniid",
   "training_rounds": 10,
-  "client_dropout_prob": 0.3,
-  "final_accuracy": 0.7717073170731708,
-  "final_auc": 0.9318370581467117,
+  "client_dropout_prob": 0.0,
+  "final_accuracy": 0.806829268292683,
+  "final_auc": 0.9230399963424949,
   "last_round": 10
 }

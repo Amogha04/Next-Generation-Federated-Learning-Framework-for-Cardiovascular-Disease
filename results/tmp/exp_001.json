@@ -4,7 +4,7 @@
   "distribution": "iid",
   "training_rounds": 10,
   "client_dropout_prob": 0.0,
-  "final_accuracy": 0.8614634146341463,
-  "final_auc": 0.9320923215251797,
+  "final_accuracy": 0.8419512195121951,
+  "final_auc": 0.9206092793952926,
   "last_round": 10
 }
